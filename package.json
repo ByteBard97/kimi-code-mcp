@@ -1,0 +1,50 @@
+{
+  "name": "kimi-code-mcp",
+  "version": "1.0.0",
+  "description": "MCP server wrapping Kimi Code CLI (kimi-k2.5) — filesystem, shell, web, and agent tools",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "kimi-code-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "watch": "tsc --watch",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "kimi",
+    "kimi-code",
+    "kimi-cli",
+    "moonshot",
+    "coding-agent"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/userfrm/kimi-code-mcp.git"
+  },
+  "homepage": "https://github.com/userfrm/kimi-code-mcp",
+  "bugs": {
+    "url": "https://github.com/userfrm/kimi-code-mcp/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.2",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "@vitest/coverage-v8": "^2.1.8",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.8"
+  }
+}

@@ -10,6 +10,7 @@ interface UsageEntry {
   project: string;
   tool: string;
   workDir: string;
+  model: string | null;
   input_other: number | null;
   input_cache_read: number | null;
   input_cache_creation: number | null;
@@ -22,7 +23,8 @@ function logUsage(
   toolName: string,
   args: Record<string, unknown>,
   tokenUsage: import('./cli.js').TokenUsage | null | undefined,
-  contextTokens: number | null | undefined
+  contextTokens: number | null | undefined,
+  model: string | undefined,
 ): void {
   if (!tokenUsage) return;
 
@@ -37,6 +39,7 @@ function logUsage(
     project,
     tool: toolName,
     workDir,
+    model: model ?? null,
     input_other: tokenUsage.input_other ?? null,
     input_cache_read: tokenUsage.input_cache_read ?? null,
     input_cache_creation: tokenUsage.input_cache_creation ?? null,
@@ -56,6 +59,15 @@ function logUsage(
   }
 }
 
+// Format constraint injected into heavy tools to keep responses dense
+const DENSITY_CONSTRAINT = `
+OUTPUT FORMAT CONSTRAINTS:
+- Be extremely concise. Prioritize information density over completeness.
+- Use structured markdown with headers, not paragraphs.
+- Omit boilerplate, pleasantries, and obvious observations.
+- Put the most critical findings first.
+IMPORTANT: Your response will be consumed by another AI model (Claude) with limited context window.`;
+
 export const TOOLS = [
   {
     name: 'kimi_read_file',
@@ -65,6 +77,7 @@ export const TOOLS = [
       offset: z.number().optional().describe('Line offset to start from (0-based)'),
       limit: z.number().optional().describe('Max lines to read (default: 1000)'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
+      model: z.string().optional().describe('Kimi model to use (e.g., "k2.5", "k2.5-lite"). Defaults to system default.'),
     }),
   },
   {
@@ -74,6 +87,7 @@ export const TOOLS = [
       path: z.string().describe('Absolute path to image or video file'),
       prompt: z.string().optional().describe('Analysis prompt for the media'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
+      model: z.string().optional().describe('Kimi model to use'),
     }),
   },
   {
@@ -83,6 +97,7 @@ export const TOOLS = [
       path: z.string().describe('Absolute file path to write'),
       content: z.string().describe('Content to write to the file'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
+      model: z.string().optional().describe('Kimi model to use'),
     }),
   },
   {
@@ -93,6 +108,7 @@ export const TOOLS = [
       old_string: z.string().describe('Exact string to find and replace'),
       new_string: z.string().describe('New string to replace with'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
+      model: z.string().optional().describe('Kimi model to use'),
     }),
   },
   {
@@ -102,6 +118,7 @@ export const TOOLS = [
       pattern: z.string().describe('Glob pattern to match (e.g., "**/*.ts")'),
       path: z.string().optional().describe('Directory to search in (default: current directory)'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
+      model: z.string().optional().describe('Kimi model to use'),
     }),
   },
   {
@@ -112,6 +129,7 @@ export const TOOLS = [
       path: z.string().optional().describe('Directory or file to search in (default: current directory)'),
       include: z.string().optional().describe('File pattern to include (e.g., "*.ts")'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
+      model: z.string().optional().describe('Kimi model to use'),
     }),
   },
   {
@@ -121,6 +139,7 @@ export const TOOLS = [
       command: z.string().describe('Shell command to execute'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
       timeout: z.number().optional().describe('Timeout in seconds (default: 120)'),
+      model: z.string().optional().describe('Kimi model to use'),
     }),
   },
   {
@@ -129,6 +148,7 @@ export const TOOLS = [
     inputSchema: z.object({
       query: z.string().describe('Search query'),
       include_content: z.boolean().optional().describe('Include page content in results'),
+      model: z.string().optional().describe('Kimi model to use'),
     }),
   },
   {
@@ -137,6 +157,7 @@ export const TOOLS = [
     inputSchema: z.object({
       url: z.string().describe('URL to fetch'),
       prompt: z.string().optional().describe('Extraction prompt for the webpage'),
+      model: z.string().optional().describe('Kimi model to use'),
     }),
   },
   {
@@ -146,6 +167,8 @@ export const TOOLS = [
       prompt: z.string().describe('Task description for the agent'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
       timeout: z.number().optional().describe('Timeout in seconds (default: 300)'),
+      model: z.string().optional().describe('Kimi model to use (default: k2.5)'),
+      max_output_tokens: z.number().optional().describe('Max tokens in response (~4 chars/token). Default: 15000. Use 3000-5000 for quick scans.'),
     }),
   },
   {
@@ -154,6 +177,7 @@ export const TOOLS = [
     inputSchema: z.object({
       problem: z.string().describe('Problem or question to analyze'),
       context: z.string().optional().describe('Additional context for reasoning'),
+      model: z.string().optional().describe('Kimi model to use'),
     }),
   },
   {
@@ -163,6 +187,8 @@ export const TOOLS = [
       code_or_path: z.string().describe('Code snippet or file path to review'),
       focus: z.enum(['bugs', 'security', 'performance', 'style', 'all']).optional().describe('Review focus area (default: all)'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
+      model: z.string().optional().describe('Kimi model to use'),
+      max_output_tokens: z.number().optional().describe('Max tokens in response. Default: 15000.'),
     }),
   },
   {
@@ -172,6 +198,8 @@ export const TOOLS = [
       question: z.string().describe('Research question or topic'),
       context: z.string().optional().describe('Additional context or background'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
+      model: z.string().optional().describe('Kimi model to use'),
+      max_output_tokens: z.number().optional().describe('Max tokens in response. Default: 15000.'),
     }),
   },
   {
@@ -181,6 +209,8 @@ export const TOOLS = [
       target: z.string().describe('Code or file path to generate tests for'),
       instructions: z.string().optional().describe('Specific testing instructions'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
+      model: z.string().optional().describe('Kimi model to use'),
+      max_output_tokens: z.number().optional().describe('Max tokens in response. Default: 15000.'),
     }),
   },
 ] as const;
@@ -191,15 +221,17 @@ export async function handleToolCall(toolName: string, args: Record<string, unkn
   const prompt = buildPrompt(toolName, args);
   const thinking = toolName === 'kimi_think';
   const timeout = (typeof args.timeout === 'number' ? args.timeout : (toolName === 'kimi_agent' ? 300 : 120));
+  const model = (args.model as string) || undefined;
 
   const output = await executeKimi({
     prompt,
     workDir: args.workFolder as string | undefined,
     thinking,
     timeout,
+    model,
   });
 
-  logUsage(toolName, args, output.tokenUsage, output.contextTokens);
+  logUsage(toolName, args, output.tokenUsage, output.contextTokens, model);
 
   if (toolName === 'kimi_think' && output.thinking) {
     return `## Reasoning\n\n${output.thinking}\n\n## Response\n\n${output.text}`;
@@ -284,7 +316,15 @@ export function buildPrompt(toolName: string, args: Record<string, unknown>): st
     }
 
     case 'kimi_agent': {
-      return args.prompt as string;
+      const userPrompt = args.prompt as string;
+      const maxTokens = args.max_output_tokens as number | undefined;
+      let prompt = userPrompt;
+      prompt += '\n' + DENSITY_CONSTRAINT;
+      if (maxTokens) {
+        const maxChars = maxTokens * 4;
+        prompt += `\n\nSTRICT OUTPUT BUDGET: Maximum ${maxChars.toLocaleString()} characters. If you cannot fit everything, prioritize the most important findings and note what was truncated.`;
+      }
+      return prompt;
     }
 
     case 'kimi_think': {
@@ -302,6 +342,7 @@ export function buildPrompt(toolName: string, args: Record<string, unknown>): st
       const codeOrPath = args.code_or_path as string;
       const focus = (args.focus as string | undefined) || 'all';
       const isFile = existsSync(codeOrPath);
+      const maxTokens = args.max_output_tokens as number | undefined;
 
       let prompt = isFile
         ? `Review the code in file ${codeOrPath}`
@@ -313,27 +354,55 @@ export function buildPrompt(toolName: string, args: Record<string, unknown>): st
         prompt += `\n\nFocus specifically on ${focus}.`;
       }
 
+      prompt += '\n' + DENSITY_CONSTRAINT;
+      prompt += '\n\nReturn findings as a structured list: `- [severity] file:line — issue description`.';
+
+      if (maxTokens) {
+        const maxChars = maxTokens * 4;
+        prompt += `\n\nSTRICT OUTPUT BUDGET: Maximum ${maxChars.toLocaleString()} characters.`;
+      }
+
       return prompt;
     }
 
     case 'kimi_research': {
       const question = args.question as string;
       const context = args.context as string | undefined;
+      const maxTokens = args.max_output_tokens as number | undefined;
+
       let prompt = `Research thoroughly:\n\n${question}`;
       if (context) {
         prompt += `\n\nAdditional context:\n${context}`;
       }
+
+      prompt += '\n' + DENSITY_CONSTRAINT;
+
+      if (maxTokens) {
+        const maxChars = maxTokens * 4;
+        prompt += `\n\nSTRICT OUTPUT BUDGET: Maximum ${maxChars.toLocaleString()} characters. If extensive, provide a summary with references to specific sections.`;
+      }
+
       return prompt;
     }
 
     case 'kimi_test': {
       const target = args.target as string;
       const instructions = args.instructions as string | undefined;
+      const maxTokens = args.max_output_tokens as number | undefined;
+
       let prompt = `Write comprehensive tests for: ${target}`;
       if (instructions) {
         prompt += `\n\nInstructions: ${instructions}`;
       }
       prompt += '\n\nInclude edge cases and error scenarios.';
+      prompt += '\n' + DENSITY_CONSTRAINT;
+      prompt += '\n\nReturn: (1) the test code, (2) a brief coverage summary.';
+
+      if (maxTokens) {
+        const maxChars = maxTokens * 4;
+        prompt += `\n\nSTRICT OUTPUT BUDGET: Maximum ${maxChars.toLocaleString()} characters.`;
+      }
+
       return prompt;
     }
 

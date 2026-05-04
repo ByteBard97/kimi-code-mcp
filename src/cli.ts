@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { parseKimiOutput } from './parser.js';
+import { getSessionId, isNewSession, saveSessionId, extractSessionIdFromStderr } from './session.js';
 
 export interface TokenUsage {
   input_other: number;
@@ -16,6 +17,7 @@ export interface KimiOutput {
   raw: string;
   tokenUsage?: TokenUsage | null;
   contextTokens?: number | null;
+  sessionId?: string | null;
 }
 
 export interface KimiCliOptions {
@@ -26,6 +28,7 @@ export interface KimiCliOptions {
   continueSession?: boolean;
   model?: string;
   timeout?: number;
+  useJsonOutput?: boolean;
 }
 
 /**
@@ -97,10 +100,33 @@ export function buildKimiArgs(options: KimiCliOptions): string[] {
     args.push('--model', options.model);
   }
 
+  // Add JSON output format if specified
+  if (options.useJsonOutput) {
+    args.push('--output-format', 'stream-json', '--final-message-only');
+  }
+
   // Add prompt
   args.push('-p', options.prompt);
 
   return args;
+}
+
+/**
+ * Resolves session options for a given workDir.
+ * If a session exists for the workDir, returns it with continue flag.
+ * Otherwise returns undefined (new session will be created by kimi CLI).
+ */
+function resolveSessionOptions(workDir: string | undefined): { sessionId?: string; continueSession?: boolean } {
+  if (!workDir) return {};
+
+  const existingSession = getSessionId(workDir);
+  if (existingSession && !isNewSession(workDir)) {
+    debug('Resuming existing session:', existingSession.slice(0, 8) + '...');
+    return { sessionId: existingSession, continueSession: true };
+  }
+
+  debug('No existing session for:', workDir);
+  return {};
 }
 
 /**
@@ -112,7 +138,18 @@ export function buildKimiArgs(options: KimiCliOptions): string[] {
 export function executeKimi(options: KimiCliOptions): Promise<KimiOutput> {
   return new Promise((resolve, reject) => {
     const binaryPath = findKimiCli();
-    const args = buildKimiArgs(options);
+
+    // Resolve session from store if workDir provided and no explicit session
+    let effectiveOptions = options;
+    if (options.workDir && !options.session) {
+      const sessionOpts = resolveSessionOptions(options.workDir);
+      effectiveOptions = {
+        ...options,
+        ...sessionOpts,
+      };
+    }
+
+    const args = buildKimiArgs(effectiveOptions);
 
     debug('Executing Kimi CLI:', binaryPath, args.join(' '));
 
@@ -159,6 +196,14 @@ export function executeKimi(options: KimiCliOptions): Promise<KimiOutput> {
 
       try {
         const output = parseKimiOutput(stdout);
+
+        // Extract and save session ID from stderr
+        const sessionId = extractSessionIdFromStderr(stderr);
+        if (sessionId && options.workDir) {
+          saveSessionId(options.workDir, sessionId);
+          output.sessionId = sessionId;
+        }
+
         resolve(output);
       } catch (error) {
         reject(new Error(`Failed to parse Kimi output: ${error instanceof Error ? error.message : String(error)}`));

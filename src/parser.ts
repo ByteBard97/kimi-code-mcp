@@ -46,48 +46,6 @@ export function extractThinkParts(raw: string): string[] {
 }
 
 /**
- * Extracts plain text by filtering out structured kimi CLI lines
- */
-export function extractPlainText(raw: string): string[] {
-  const lines = raw.split('\n');
-  const filtered: string[] = [];
-
-  const skipPrefixes = [
-    'TurnBegin',
-    'TurnEnd',
-    'StepBegin',
-    'StepEnd',
-    'StatusUpdate',
-    'TokenUsage',
-    'ToolUseBegin',
-    'ToolUseEnd',
-    'ToolResultPart',
-    'ErrorPart',
-    'ThinkPart',
-  ];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Skip empty lines
-    if (!trimmed) continue;
-
-    // Skip lines starting with known prefixes
-    if (skipPrefixes.some(prefix => trimmed.startsWith(prefix))) continue;
-
-    // Skip lines starting with ( or )
-    if (trimmed.startsWith('(') || trimmed.startsWith(')')) continue;
-
-    // Skip 4-space-indented key= patterns
-    if (line.startsWith('    ') && /^\s+\w+=/.test(line)) continue;
-
-    filtered.push(line);
-  }
-
-  return filtered;
-}
-
-/**
  * Extracts token usage from TokenUsage(...) blocks in kimi CLI output
  */
 export function extractTokenUsage(raw: string): TokenUsage | null {
@@ -131,24 +89,112 @@ export function extractContextTokens(raw: string): number | null {
 }
 
 /**
+ * Extracts plain text by filtering out structured kimi CLI lines
+ */
+export function extractPlainText(raw: string): string[] {
+  const lines = raw.split('\n');
+  const filtered: string[] = [];
+
+  const skipPrefixes = [
+    'TurnBegin',
+    'TurnEnd',
+    'StepBegin',
+    'StepEnd',
+    'StatusUpdate',
+    'TokenUsage',
+    'ToolUseBegin',
+    'ToolUseEnd',
+    'ToolResultPart',
+    'ErrorPart',
+    'ThinkPart',
+  ];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Skip empty lines
+    if (!trimmed) continue;
+
+    // Skip lines starting with known prefixes
+    if (skipPrefixes.some(prefix => trimmed.startsWith(prefix))) continue;
+
+    // Skip lines starting with ( or )
+    if (trimmed.startsWith('(') || trimmed.startsWith(')')) continue;
+
+    // Skip 4-space-indented key= patterns
+    if (line.startsWith('    ') && /^\s+\w+=/.test(line)) continue;
+
+    filtered.push(line);
+  }
+
+  return filtered;
+}
+
+/**
+ * Parses Kimi CLI output when using --output-format stream-json --final-message-only.
+ * The output is one JSON line: {"role":"assistant","content":[...]}
+ * content can be a string or an array of {type, text/think} objects.
+ */
+export function parseKimiJsonOutput(raw: string): { text: string; thinking?: string } | null {
+  const lines = raw.trim().split('\n').filter(Boolean);
+
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    if (!line.startsWith('{')) continue;
+
+    try {
+      const parsed = JSON.parse(line);
+
+      if (parsed.role === 'assistant' && parsed.content !== undefined) {
+        if (typeof parsed.content === 'string') {
+          return { text: parsed.content };
+        }
+        if (Array.isArray(parsed.content)) {
+          let text = '';
+          let thinking = '';
+          for (const part of parsed.content) {
+            if (part.type === 'text' && part.text) text += part.text;
+            if (part.type === 'think' && part.think) thinking += part.think;
+          }
+          return { text, thinking: thinking || undefined };
+        }
+      }
+    } catch {
+      // not valid JSON, skip
+    }
+  }
+
+  return null;
+}
+
+/**
  * Parses kimi CLI verbose output into structured format
  */
 export function parseKimiOutput(raw: string): KimiOutput {
-  // Extract text parts
+  // Try JSON format first (when --output-format stream-json is used)
+  const jsonResult = parseKimiJsonOutput(raw);
+  if (jsonResult) {
+    return {
+      text: jsonResult.text,
+      thinking: jsonResult.thinking,
+      raw,
+      tokenUsage: extractTokenUsage(raw),
+      contextTokens: extractContextTokens(raw),
+    };
+  }
+
+  // Fallback to Python-style repr parsing
   let textParts = extractTextParts(raw);
 
-  // Fallback to plain text if no TextParts found
   if (textParts.length === 0) {
     textParts = extractPlainText(raw);
   }
 
   const text = textParts.join('');
 
-  // Extract thinking parts
   const thinkParts = extractThinkParts(raw);
   const thinking = thinkParts.length > 0 ? thinkParts.join('\n\n') : undefined;
 
-  // Extract token usage
   const tokenUsage = extractTokenUsage(raw);
   const contextTokens = extractContextTokens(raw);
 

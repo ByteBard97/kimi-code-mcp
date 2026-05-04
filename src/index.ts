@@ -8,9 +8,10 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { z } from 'zod';
 import { TOOLS, TOOL_MAP, handleToolCall } from './handlers.js';
+import { VERSION } from './version.js';
 
 const server = new Server(
-  { name: 'kimi-code-mcp', version: '1.0.0' },
+  { name: 'kimi-code-mcp', version: VERSION },
   { capabilities: { tools: {} } },
 );
 
@@ -105,7 +106,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('kimi-code-mcp v1.0.0 started');
+  console.error(`kimi-code-mcp v${VERSION} started`);
 }
 
 main().catch((error) => {

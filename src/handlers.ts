@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { executeKimi } from './cli.js';
 import { existsSync, appendFileSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { VERSION, FEATURES } from './version.js';
+import { getConfiguredModels, getModelAliasHelp } from './models.js';
 
 const USAGE_LOG_PATH = process.env.KIMI_USAGE_LOG || `${homedir()}/.kimi-usage-tracking.jsonl`;
 
@@ -213,11 +215,32 @@ export const TOOLS = [
       max_output_tokens: z.number().optional().describe('Max tokens in response. Default: 15000.'),
     }),
   },
+  {
+    name: 'kimi_mcp_info',
+    description: 'Return version and capability info about this MCP server.',
+    inputSchema: z.object({}),
+  },
 ] as const;
 
 export const TOOL_MAP = new Map<string, typeof TOOLS[number]>(TOOLS.map(t => [t.name, t]));
 
 export async function handleToolCall(toolName: string, args: Record<string, unknown>): Promise<string> {
+  if (toolName === 'kimi_mcp_info') {
+    const models = getConfiguredModels();
+    return JSON.stringify({
+      version: VERSION,
+      features: FEATURES,
+      models: models.map(m => ({
+        id: m.id,
+        displayName: m.displayName,
+        maxContextSize: m.maxContextSize,
+      })),
+      aliases: getModelAliasHelp(),
+      usageLogPath: `${homedir()}/.kimi-usage-tracking.jsonl`,
+      sessionStorePath: `${homedir()}/.kimi-sessions.json`,
+    }, null, 2);
+  }
+
   const prompt = buildPrompt(toolName, args);
   const thinking = toolName === 'kimi_think';
   const timeout = (typeof args.timeout === 'number' ? args.timeout : (toolName === 'kimi_agent' ? 300 : 120));

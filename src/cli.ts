@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { parseKimiOutput } from './parser.js';
 import { getSessionId, isNewSession, saveSessionId, extractSessionIdFromStderr } from './session.js';
+import { resolveModel } from './models.js';
 
 export interface TokenUsage {
   input_other: number;
@@ -95,9 +96,10 @@ export function buildKimiArgs(options: KimiCliOptions): string[] {
     args.push('--continue');
   }
 
-  // Add model if specified
-  if (options.model) {
-    args.push('--model', options.model);
+  // Add model if specified (resolve alias first)
+  const resolvedModel = resolveModel(options.model);
+  if (resolvedModel) {
+    args.push('--model', resolvedModel);
   }
 
   // Add JSON output format if specified

@@ -3,10 +3,19 @@ import { existsSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { parseKimiOutput } from './parser.js';
 
+export interface TokenUsage {
+  input_other: number;
+  output: number;
+  input_cache_read: number;
+  input_cache_creation: number;
+}
+
 export interface KimiOutput {
   text: string;
   thinking?: string;
   raw: string;
+  tokenUsage?: TokenUsage | null;
+  contextTokens?: number | null;
 }
 
 export interface KimiCliOptions {

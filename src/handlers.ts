@@ -1,6 +1,60 @@
 import { z } from 'zod';
 import { executeKimi } from './cli.js';
-import { existsSync } from 'node:fs';
+import { existsSync, appendFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+
+const USAGE_LOG_PATH = process.env.KIMI_USAGE_LOG || `${homedir()}/.kimi-usage-tracking.jsonl`;
+
+interface UsageEntry {
+  timestamp: string;
+  project: string;
+  tool: string;
+  workDir: string;
+  input_other: number | null;
+  input_cache_read: number | null;
+  input_cache_creation: number | null;
+  output: number | null;
+  context_tokens: number | null;
+  total_tokens: number;
+}
+
+function logUsage(
+  toolName: string,
+  args: Record<string, unknown>,
+  tokenUsage: import('./cli.js').TokenUsage | null | undefined,
+  contextTokens: number | null | undefined
+): void {
+  if (!tokenUsage) return;
+
+  const workDir = (args.workFolder as string) || process.cwd();
+
+  // Derive project name from workDir (last meaningful dir component)
+  const parts = workDir.split('/').filter(Boolean);
+  const project = parts.length > 0 ? parts[parts.length - 1] : 'unknown';
+
+  const entry: UsageEntry = {
+    timestamp: new Date().toISOString(),
+    project,
+    tool: toolName,
+    workDir,
+    input_other: tokenUsage.input_other ?? null,
+    input_cache_read: tokenUsage.input_cache_read ?? null,
+    input_cache_creation: tokenUsage.input_cache_creation ?? null,
+    output: tokenUsage.output ?? null,
+    context_tokens: contextTokens ?? null,
+    total_tokens:
+      contextTokens ??
+      ((tokenUsage.input_other || 0) +
+        (tokenUsage.input_cache_read || 0) +
+        (tokenUsage.output || 0)),
+  };
+
+  try {
+    appendFileSync(USAGE_LOG_PATH, JSON.stringify(entry) + '\n');
+  } catch {
+    // Silent fail — don't break tool execution for logging
+  }
+}
 
 export const TOOLS = [
   {
@@ -144,6 +198,8 @@ export async function handleToolCall(toolName: string, args: Record<string, unkn
     thinking,
     timeout,
   });
+
+  logUsage(toolName, args, output.tokenUsage, output.contextTokens);
 
   if (toolName === 'kimi_think' && output.thinking) {
     return `## Reasoning\n\n${output.thinking}\n\n## Response\n\n${output.text}`;

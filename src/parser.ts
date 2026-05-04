@@ -1,4 +1,4 @@
-import type { KimiOutput } from './cli.js';
+import type { KimiOutput, TokenUsage } from './cli.js';
 
 /**
  * Unescapes Python string literals found in kimi CLI output
@@ -88,6 +88,49 @@ export function extractPlainText(raw: string): string[] {
 }
 
 /**
+ * Extracts token usage from TokenUsage(...) blocks in kimi CLI output
+ */
+export function extractTokenUsage(raw: string): TokenUsage | null {
+  const tokenUsageRegex = /TokenUsage\(\s*([^)]*?)\s*\)/gs;
+  let lastMatch: string | null = null;
+
+  let match;
+  while ((match = tokenUsageRegex.exec(raw)) !== null) {
+    lastMatch = match[1];
+  }
+
+  if (!lastMatch) return null;
+
+  const result: Partial<TokenUsage> = {};
+  const kvRegex = /(\w+)\s*=\s*(\d+)/g;
+
+  let kv;
+  while ((kv = kvRegex.exec(lastMatch)) !== null) {
+    result[kv[1] as keyof TokenUsage] = parseInt(kv[2], 10);
+  }
+
+  return result as TokenUsage;
+}
+
+/**
+ * Extracts context_tokens from the last StatusUpdate in kimi CLI output
+ */
+export function extractContextTokens(raw: string): number | null {
+  const statusRegex = /StatusUpdate\(\s*([^)]*token_usage[^)]*)\s*\)/gs;
+  let lastMatch: string | null = null;
+
+  let match;
+  while ((match = statusRegex.exec(raw)) !== null) {
+    lastMatch = match[1];
+  }
+
+  if (!lastMatch) return null;
+
+  const contextTokensMatch = lastMatch.match(/context_tokens=(\d+)/);
+  return contextTokensMatch ? parseInt(contextTokensMatch[1], 10) : null;
+}
+
+/**
  * Parses kimi CLI verbose output into structured format
  */
 export function parseKimiOutput(raw: string): KimiOutput {
@@ -105,9 +148,15 @@ export function parseKimiOutput(raw: string): KimiOutput {
   const thinkParts = extractThinkParts(raw);
   const thinking = thinkParts.length > 0 ? thinkParts.join('\n\n') : undefined;
 
+  // Extract token usage
+  const tokenUsage = extractTokenUsage(raw);
+  const contextTokens = extractContextTokens(raw);
+
   return {
     text,
     thinking,
     raw,
+    tokenUsage,
+    contextTokens,
   };
 }

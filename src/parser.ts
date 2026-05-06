@@ -16,10 +16,11 @@ function unescapeString(str: string): string {
 }
 
 /**
- * Extracts text from TextPart(...) blocks in kimi CLI output
+ * Extracts text from TextPart(...) blocks in kimi CLI output.
+ * Handles both legacy single-line format and Kimi 1.41.0+ multi-line format.
  */
 export function extractTextParts(raw: string): string[] {
-  const textPartRegex = /TextPart\(type='text',\s*text='((?:[^'\\]|\\.)*)'\)/gs;
+  const textPartRegex = /TextPart\(\s*type='text',\s*text='((?:[^'\\]|\\.)*)'\s*\)/gs;
   const parts: string[] = [];
 
   let match;
@@ -31,15 +32,19 @@ export function extractTextParts(raw: string): string[] {
 }
 
 /**
- * Extracts thinking from ThinkPart(...) blocks in kimi CLI output
+ * Extracts thinking from ThinkPart(...) blocks in kimi CLI output.
+ * Handles both single-quote (legacy) and double-quote (Kimi 1.41.0+) think field,
+ * and both single-line and multi-line formatting.
  */
 export function extractThinkParts(raw: string): string[] {
-  const thinkPartRegex = /ThinkPart\(\s*type='think',\s*think='((?:[^'\\]|\\.)*)',\s*encrypted=/gs;
+  // Kimi 1.41.0+ uses double quotes for the think field; older versions used single quotes
+  const thinkPartRegex = /ThinkPart\(\s*type='think',\s*think=(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*,?\s*encrypted=/gs;
   const parts: string[] = [];
 
   let match;
   while ((match = thinkPartRegex.exec(raw)) !== null) {
-    parts.push(unescapeString(match[1]));
+    // match[1] = single-quote capture, match[2] = double-quote capture
+    parts.push(unescapeString(match[1] ?? match[2] ?? ''));
   }
 
   return parts;
@@ -107,6 +112,10 @@ export function extractPlainText(raw: string): string[] {
     'ToolResultPart',
     'ErrorPart',
     'ThinkPart',
+    'MCPLoadingBegin',
+    'MCPLoadingEnd',
+    'MCPServerSnapshot',
+    'TextPart',
   ];
 
   for (const line of lines) {

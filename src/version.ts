@@ -1,7 +1,7 @@
 /**
  * Central version identifier for the kimi-code-mcp server.
  */
-export const VERSION = '1.1.0';
+export const VERSION = '1.1.1';
 
 export const FEATURES = [
   'token-usage-tracking',

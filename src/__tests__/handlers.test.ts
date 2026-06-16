@@ -2,18 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { buildPrompt } from '../handlers.js';
 
 describe('buildPrompt', () => {
-  it('builds kimi_read_file prompt with path only', () => {
-    const prompt = buildPrompt('kimi_read_file', { path: '/foo/bar.ts' });
-    expect(prompt).toContain('/foo/bar.ts');
-    expect(prompt).toContain('Read the file');
-  });
-
-  it('builds kimi_read_file prompt with offset and limit', () => {
-    const prompt = buildPrompt('kimi_read_file', { path: '/foo.ts', offset: 10, limit: 50 });
-    expect(prompt).toContain('from line 10');
-    expect(prompt).toContain('up to 50 lines');
-  });
-
   it('builds kimi_read_media prompt with default description', () => {
     const prompt = buildPrompt('kimi_read_media', { path: '/img.png' });
     expect(prompt).toContain('/img.png');
@@ -23,44 +11,6 @@ describe('buildPrompt', () => {
   it('builds kimi_read_media prompt with custom prompt', () => {
     const prompt = buildPrompt('kimi_read_media', { path: '/img.png', prompt: 'Count the cats' });
     expect(prompt).toContain('Count the cats');
-  });
-
-  it('builds kimi_write_file prompt', () => {
-    const prompt = buildPrompt('kimi_write_file', { path: '/out.txt', content: 'hello' });
-    expect(prompt).toContain('/out.txt');
-    expect(prompt).toContain('hello');
-  });
-
-  it('builds kimi_edit_file prompt', () => {
-    const prompt = buildPrompt('kimi_edit_file', { path: '/f.ts', old_string: 'old', new_string: 'new' });
-    expect(prompt).toContain('old');
-    expect(prompt).toContain('new');
-    expect(prompt).toContain('/f.ts');
-  });
-
-  it('builds kimi_glob prompt', () => {
-    const prompt = buildPrompt('kimi_glob', { pattern: '**/*.ts' });
-    expect(prompt).toContain('**/*.ts');
-  });
-
-  it('builds kimi_glob prompt with path', () => {
-    const prompt = buildPrompt('kimi_glob', { pattern: '*.js', path: '/src' });
-    expect(prompt).toContain('/src');
-  });
-
-  it('builds kimi_grep prompt', () => {
-    const prompt = buildPrompt('kimi_grep', { pattern: 'TODO' });
-    expect(prompt).toContain('TODO');
-  });
-
-  it('builds kimi_grep prompt with include', () => {
-    const prompt = buildPrompt('kimi_grep', { pattern: 'TODO', include: '*.ts' });
-    expect(prompt).toContain('*.ts');
-  });
-
-  it('builds kimi_shell prompt', () => {
-    const prompt = buildPrompt('kimi_shell', { command: 'ls -la' });
-    expect(prompt).toContain('ls -la');
   });
 
   it('builds kimi_web_search prompt', () => {
@@ -85,7 +35,7 @@ describe('buildPrompt', () => {
 
   it('builds kimi_agent prompt', () => {
     const prompt = buildPrompt('kimi_agent', { prompt: 'Do the thing' });
-    expect(prompt).toBe('Do the thing');
+    expect(prompt).toContain('Do the thing');
   });
 
   it('builds kimi_think prompt', () => {

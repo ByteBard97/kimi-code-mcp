@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { TOOLS, TOOL_MAP } from '../handlers.js';
 
 describe('TOOLS', () => {
-  it('has exactly 14 tools', () => {
-    expect(TOOLS).toHaveLength(14);
+  it('has exactly 15 tools', () => {
+    expect(TOOLS).toHaveLength(15);
   });
 
   it('all tools have name, description, and inputSchema', () => {
@@ -22,8 +22,8 @@ describe('TOOLS', () => {
 });
 
 describe('TOOL_MAP', () => {
-  it('contains all 14 tools', () => {
-    expect(TOOL_MAP.size).toBe(14);
+  it('contains all 15 tools', () => {
+    expect(TOOL_MAP.size).toBe(15);
   });
 
   it('maps each tool name to the correct tool', () => {

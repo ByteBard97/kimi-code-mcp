@@ -4,6 +4,16 @@ import { existsSync, appendFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { VERSION, FEATURES } from './version.js';
 import { getConfiguredModels, getModelAliasHelp } from './models.js';
+import { handleNativeTool } from './native.js';
+
+const NATIVE_TOOLS = new Set([
+  'kimi_read_file',
+  'kimi_write_file',
+  'kimi_edit_file',
+  'kimi_glob',
+  'kimi_grep',
+  'kimi_shell',
+]);
 
 const USAGE_LOG_PATH = process.env.KIMI_USAGE_LOG || `${homedir()}/.kimi-usage-tracking.jsonl`;
 
@@ -241,6 +251,10 @@ export async function handleToolCall(toolName: string, args: Record<string, unkn
     }, null, 2);
   }
 
+  if (NATIVE_TOOLS.has(toolName)) {
+    return handleNativeTool(toolName, args);
+  }
+
   const prompt = buildPrompt(toolName, args);
   const thinking = toolName === 'kimi_think';
   const timeout = (typeof args.timeout === 'number' ? args.timeout : (toolName === 'kimi_agent' ? 300 : 120));
@@ -265,61 +279,10 @@ export async function handleToolCall(toolName: string, args: Record<string, unkn
 
 export function buildPrompt(toolName: string, args: Record<string, unknown>): string {
   switch (toolName) {
-    case 'kimi_read_file': {
-      const path = args.path as string;
-      const offset = args.offset as number | undefined;
-      const limit = args.limit as number | undefined;
-      let prompt = `Read the file at ${path}`;
-      if (offset !== undefined) {
-        prompt += ` from line ${offset}`;
-      }
-      if (limit !== undefined) {
-        prompt += `, up to ${limit} lines`;
-      }
-      prompt += '. Output the file content.';
-      return prompt;
-    }
-
     case 'kimi_read_media': {
       const path = args.path as string;
       const userPrompt = args.prompt as string | undefined;
       return `Read the media file at ${path}. ${userPrompt || 'Describe this media file in detail.'}`;
-    }
-
-    case 'kimi_write_file': {
-      const path = args.path as string;
-      const content = args.content as string;
-      return `Write the following content to the file ${path}:\n\n${content}`;
-    }
-
-    case 'kimi_edit_file': {
-      const path = args.path as string;
-      const oldString = args.old_string as string;
-      const newString = args.new_string as string;
-      return `In the file ${path}, find the exact string:\n\`\`\`\n${oldString}\n\`\`\`\n\nAnd replace it with:\n\`\`\`\n${newString}\n\`\`\``;
-    }
-
-    case 'kimi_glob': {
-      const pattern = args.pattern as string;
-      const path = args.path as string | undefined;
-      return `Find all files matching the glob pattern '${pattern}' under ${path || '.'}. List the matching file paths.`;
-    }
-
-    case 'kimi_grep': {
-      const pattern = args.pattern as string;
-      const path = args.path as string | undefined;
-      const include = args.include as string | undefined;
-      let prompt = `Search for the regex pattern '${pattern}' in files under ${path || '.'}.`;
-      if (include) {
-        prompt += ` Only search in files matching '${include}'.`;
-      }
-      prompt += ' Show matching lines with file paths and line numbers.';
-      return prompt;
-    }
-
-    case 'kimi_shell': {
-      const command = args.command as string;
-      return `Execute this shell command and show the output:\n\`\`\`\n${command}\n\`\`\``;
     }
 
     case 'kimi_web_search': {

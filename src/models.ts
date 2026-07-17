@@ -147,7 +147,9 @@ function getAliasMap(): Map<string, string> {
  * Falls back to returning the input unchanged if no alias matches.
  */
 export function resolveModel(modelInput: string | undefined): string | undefined {
-  if (!modelInput) return undefined;
+  // No model specified → fall back to the configured default (largest-context
+  // model, currently K3) instead of letting the CLI pick its own default_model.
+  if (!modelInput) return getDefaultModel();
 
   const key = modelInput.toLowerCase().trim();
   const aliasMap = getAliasMap();
@@ -165,6 +167,15 @@ export function resolveModel(modelInput: string | undefined): string | undefined
 
   // Passthrough: user provided a raw model ID we don't recognize
   return modelInput;
+}
+
+/**
+ * Returns the default model ID: the largest-context configured model (the same
+ * one the "default"/"largest" aliases resolve to). Returns undefined if no
+ * models are configured, in which case the CLI falls back to its own default.
+ */
+export function getDefaultModel(): string | undefined {
+  return getAliasMap().get('default');
 }
 
 /**

@@ -89,7 +89,7 @@ export const TOOLS = [
       offset: z.number().optional().describe('Line offset to start from (0-based)'),
       limit: z.number().optional().describe('Max lines to read (default: 1000)'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
-      model: z.string().optional().describe('Kimi model to use (e.g., "k2.5", "k2.5-lite"). Defaults to system default.'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -99,7 +99,7 @@ export const TOOLS = [
       path: z.string().describe('Absolute path to image or video file'),
       prompt: z.string().optional().describe('Analysis prompt for the media'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -109,7 +109,7 @@ export const TOOLS = [
       path: z.string().describe('Absolute file path to write'),
       content: z.string().describe('Content to write to the file'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -120,7 +120,7 @@ export const TOOLS = [
       old_string: z.string().describe('Exact string to find and replace'),
       new_string: z.string().describe('New string to replace with'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -130,7 +130,7 @@ export const TOOLS = [
       pattern: z.string().describe('Glob pattern to match (e.g., "**/*.ts")'),
       path: z.string().optional().describe('Directory to search in (default: current directory)'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -141,7 +141,7 @@ export const TOOLS = [
       path: z.string().optional().describe('Directory or file to search in (default: current directory)'),
       include: z.string().optional().describe('File pattern to include (e.g., "*.ts")'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -151,7 +151,7 @@ export const TOOLS = [
       command: z.string().describe('Shell command to execute'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
       timeout: z.number().optional().describe('Timeout in seconds (default: 120)'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -160,7 +160,7 @@ export const TOOLS = [
     inputSchema: z.object({
       query: z.string().describe('Search query'),
       include_content: z.boolean().optional().describe('Include page content in results'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -169,7 +169,7 @@ export const TOOLS = [
     inputSchema: z.object({
       url: z.string().describe('URL to fetch'),
       prompt: z.string().optional().describe('Extraction prompt for the webpage'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -179,7 +179,7 @@ export const TOOLS = [
       prompt: z.string().describe('Task description for the agent'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
       timeout: z.number().optional().describe('Timeout in seconds (default: 300)'),
-      model: z.string().optional().describe('Kimi model to use (default: k2.5)'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
       max_output_tokens: z.number().optional().describe('Max tokens in response (~4 chars/token). Default: 15000. Use 3000-5000 for quick scans.'),
     }),
   },
@@ -189,7 +189,7 @@ export const TOOLS = [
     inputSchema: z.object({
       problem: z.string().describe('Problem or question to analyze'),
       context: z.string().optional().describe('Additional context for reasoning'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
     }),
   },
   {
@@ -199,7 +199,7 @@ export const TOOLS = [
       code_or_path: z.string().describe('Code snippet or file path to review'),
       focus: z.enum(['bugs', 'security', 'performance', 'style', 'all']).optional().describe('Review focus area (default: all)'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
       max_output_tokens: z.number().optional().describe('Max tokens in response. Default: 15000.'),
     }),
   },
@@ -210,7 +210,7 @@ export const TOOLS = [
       question: z.string().describe('Research question or topic'),
       context: z.string().optional().describe('Additional context or background'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
       max_output_tokens: z.number().optional().describe('Max tokens in response. Default: 15000.'),
     }),
   },
@@ -221,7 +221,7 @@ export const TOOLS = [
       target: z.string().describe('Code or file path to generate tests for'),
       instructions: z.string().optional().describe('Specific testing instructions'),
       workFolder: z.string().optional().describe('Working directory (absolute path)'),
-      model: z.string().optional().describe('Kimi model to use'),
+      model: z.string().optional().describe('Kimi model to use (e.g. "k3", "k2.7", "highspeed"). Defaults to K3 (1M context).'),
       max_output_tokens: z.number().optional().describe('Max tokens in response. Default: 15000.'),
     }),
   },
